@@ -129,9 +129,11 @@ def snap(points: pd.DataFrame, roads: gpd.GeoDataFrame, *,
     seg_geom = segs.geometry.reindex(joined["index_right"]).reset_index(drop=True)
     pt_geom = joined.geometry.reset_index(drop=True)
     offsets, fractions, lengths = [], [], []
-    for line, point in zip(seg_geom, pt_geom):
+    for line, point in zip(seg_geom, pt_geom, strict=True):
         if line is None or line.is_empty:
-            offsets.append(None); fractions.append(None); lengths.append(None)
+            offsets.append(None)
+            fractions.append(None)
+            lengths.append(None)
             continue
         offset = line.project(point)
         offsets.append(offset)
@@ -267,7 +269,7 @@ def main(argv: list[str] | None = None) -> int:
     for k, v in sorted(r["quality"].items(), key=lambda kv: -kv[1]):
         print(f"    {k:<20} {v:>8,}")
     ok = r["snapped_ok"] or 1
-    print(f"\n  tag coverage on accepted snaps (reported, never imputed):")
+    print("\n  tag coverage on accepted snaps (reported, never imputed):")
     print(f"    maxspeed null      {r['maxspeed_null']:>8,}  ({r['maxspeed_null']/ok:.1%})")
     print(f"    lanes null         {r['lanes_null']:>8,}  ({r['lanes_null']/ok:.1%})")
     return 0

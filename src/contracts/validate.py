@@ -15,7 +15,6 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-import duckdb
 import yaml
 
 from src.config import REPO_ROOT, load_settings

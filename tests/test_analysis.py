@@ -13,7 +13,6 @@ import pytest
 
 from src.geo import analysis
 
-
 # --- multiple testing -------------------------------------------------------
 
 def test_benjamini_hochberg_is_less_permissive_than_raw_alpha():

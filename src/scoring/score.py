@@ -20,11 +20,8 @@ implies someone might act on the ranking.
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass, field
 from datetime import date, datetime
-
-from .features import FORBIDDEN_FEATURES
 
 SCORABLE_STATUSES = frozenset({"ELIGIBLE", "BLOCKED_UNTIL"})
 MAX_SEVERITY = 4.0
@@ -97,17 +94,6 @@ def compute(record: dict, rules: dict, *, as_of: date,
     return Score(total=round(sum(components.values()), 6), components=components)
 
 
-def assert_no_forbidden_inputs(record: dict) -> None:
-    """The score must not read a geographic or demographic identifier, for the
-    same reason the model must not: ranking on them is the redlining-adjacent
-    design Part 4 warns about. Holding them for the contract is separate."""
-    used = FORBIDDEN_FEATURES & set(record)
-    if used and any(record.get(k) is not None for k in used):
-        # Presence in the record is fine — it carries the whole contract row.
-        # What matters is that nothing below reads them, which the tests pin.
-        pass
-
-
 def explain(score: Score) -> str:
     """Human-readable decomposition, ordered by contribution."""
     parts = sorted(score.components.items(), key=lambda kv: -abs(kv[1]))
@@ -171,7 +157,6 @@ def score_crashes(con, rules: dict, as_of: date, source: str = "MONTGOMERY_MD"):
 def main(argv: list[str] | None = None) -> int:
     import argparse
     import logging
-    import sys
 
     import yaml
 

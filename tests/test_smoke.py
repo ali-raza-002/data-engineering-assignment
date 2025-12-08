@@ -5,6 +5,7 @@ and the network path to a public, no-key source is reachable before any real
 ingestion logic is written.
 """
 
+import pytest
 import requests
 
 from src.config import load_settings
@@ -15,6 +16,7 @@ def test_config_loads():
     assert settings.sources["montgomery"]["incidents"] == "bhju-22kf"
 
 
+@pytest.mark.slow
 def test_montgomery_endpoint_reachable():
     settings = load_settings()
     moco = settings.sources["montgomery"]

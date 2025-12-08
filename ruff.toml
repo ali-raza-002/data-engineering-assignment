@@ -1,0 +1,11 @@
+target-version = "py312"
+line-length = 110
+extend-exclude = ["project_venv", "data"]
+
+[lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+# Column-aligned SQL fragments and lookup tables read better unwrapped.
+ignore = ["E501"]
+
+[lint.isort]
+known-first-party = ["src"]

@@ -18,7 +18,7 @@ import hashlib
 import json
 import uuid
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS compliance_decision_lineage (
@@ -92,4 +92,4 @@ def write(con, *, decision, subject_id: str, channel: str, jurisdiction: str | N
 
 
 def utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)

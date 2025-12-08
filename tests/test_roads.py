@@ -7,8 +7,6 @@ is not enrichment, it is fiction."
 
 from __future__ import annotations
 
-import geopandas as gpd
-import pandas as pd
 import pytest
 from shapely.geometry import LineString, Point
 
@@ -182,8 +180,8 @@ def test_lookup_degrades_without_the_extract(monkeypatch, tmp_path):
 def test_rejected_snaps_withhold_the_road_class():
     """A class inherited from a segment 400 m away is fiction, so it is withheld
     rather than emitted with a caveat nobody downstream reads."""
-    from src.compliance import emit
-
     import inspect
+
+    from src.compliance import emit
     source = inspect.getsource(emit.build_record)
     assert 'snap_quality") == "OK"' in source

@@ -26,10 +26,11 @@ import gzip
 import hashlib
 import json
 import logging
+from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 import duckdb
 import pandas as pd
@@ -53,7 +54,7 @@ META_COLUMNS = (
 
 
 def utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _scalarise(value: Any) -> str | None:

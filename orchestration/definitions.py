@@ -32,7 +32,6 @@ Retry policy differs by layer, deliberately:
 # string and rejects it with a confusingly self-contradictory error.
 from dagster import (
     AssetExecutionContext,
-    AssetKey,
     Backoff,
     DailyPartitionsDefinition,
     Definitions,

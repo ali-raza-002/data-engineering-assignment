@@ -25,7 +25,7 @@ from collections import Counter
 from datetime import date
 from pathlib import Path
 
-from src.config import CONFIG_DIR, REPO_ROOT, load_settings
+from src.config import REPO_ROOT, load_settings
 from src.ingest import watermark
 
 from . import lineage, windows

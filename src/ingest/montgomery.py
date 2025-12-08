@@ -17,7 +17,7 @@ import argparse
 import logging
 import sys
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from src.config import Settings, load_settings
 
@@ -59,8 +59,8 @@ def _floor_for(
     if since:
         dt = datetime.fromisoformat(since)
         if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
-        return socrata.format_ts(dt.astimezone(timezone.utc))
+            dt = dt.replace(tzinfo=UTC)
+        return socrata.format_ts(dt.astimezone(UTC))
     stored = watermark.read_watermark(con, SOURCE, dataset)
     return stored or watermark.EPOCH
 
@@ -82,7 +82,7 @@ def ingest_dataset(
 
     run_id = watermark.new_run_id()
     floor = _floor_for(con, dataset, since, full_refresh)
-    ceiling = socrata.format_ts(datetime.now(timezone.utc))
+    ceiling = socrata.format_ts(datetime.now(UTC))
 
     fields, types = socrata.fetch_schema(base, dataset_id, session=session)
     log.info("%s/%s: %d fields declared by source", dataset, dataset_id, len(fields))

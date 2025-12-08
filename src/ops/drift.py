@@ -37,6 +37,7 @@ import json
 import logging
 import sys
 from dataclasses import dataclass, field
+from itertools import pairwise
 
 import duckdb
 
@@ -93,7 +94,7 @@ def schema_drift(con: duckdb.DuckDBPyConnection) -> list[Finding]:
     for source, dataset, fields_json, types_json, captured_at in rows:
         fields = json.loads(fields_json)
         types = json.loads(types_json or "[]")
-        typed = dict(zip(fields, types)) if len(types) == len(fields) else {}
+        typed = dict(zip(fields, types, strict=True)) if len(types) == len(fields) else {}
         key = (source, dataset)
 
         if key in previous:
@@ -166,7 +167,7 @@ def cardinality_only(con: duckdb.DuckDBPyConnection, table: str,
     """
     findings: list[Finding] = []
     periods = value_sets_by_period(con, table, column)
-    for (prev_period, prev), (period, current) in zip(periods, periods[1:]):
+    for (_, prev), (period, current) in pairwise(periods):
         if len(current) != len(prev):
             findings.append(Finding(
                 SEVERITY_INFO, "cardinality", table, column, period,

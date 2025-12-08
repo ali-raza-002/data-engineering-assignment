@@ -20,7 +20,6 @@ bug and the Phase 3d row-order bug both broke it.
 from __future__ import annotations
 
 import argparse
-import hashlib
 import logging
 import sys
 from dataclasses import dataclass

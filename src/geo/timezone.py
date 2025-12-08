@@ -26,7 +26,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timezone as dt_timezone
+from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 
 from timezonefinder import TimezoneFinder
@@ -84,17 +84,17 @@ class TimezoneResolver:
         #
         # Spring forward: the wall-clock time never existed. 02:30 on a US
         # transition day maps to 07:30Z, which comes back as 03:30 local.
-        round_tripped = aware.astimezone(dt_timezone.utc).astimezone(tz).replace(tzinfo=None)
+        round_tripped = aware.astimezone(UTC).astimezone(tz).replace(tzinfo=None)
         if round_tripped != naive:
-            return Localised(aware.astimezone(dt_timezone.utc), RESOLUTION_GAP)
+            return Localised(aware.astimezone(UTC), RESOLUTION_GAP)
 
         # Fall back: the hour occurred twice with two different offsets, and
         # both are real. fold=0 is the first (still on DST) occurrence.
         if aware.replace(fold=0).utcoffset() != aware.replace(fold=1).utcoffset():
-            return Localised(aware.replace(fold=0).astimezone(dt_timezone.utc),
+            return Localised(aware.replace(fold=0).astimezone(UTC),
                              RESOLUTION_AMBIGUOUS)
 
-        return Localised(aware.astimezone(dt_timezone.utc), RESOLUTION_OK)
+        return Localised(aware.astimezone(UTC), RESOLUTION_OK)
 
     def resolve(
         self, lat: float | None, lon: float | None, naive: datetime | None

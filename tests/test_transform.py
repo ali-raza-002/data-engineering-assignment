@@ -10,7 +10,6 @@ import pytest
 
 from src.transform import normalize, severity
 
-
 # --- the dual dictionary (A2, A6, A7) ---------------------------------------
 
 

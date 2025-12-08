@@ -27,10 +27,10 @@ from jsonschema import Draft202012Validator
 
 from src.config import REPO_ROOT, load_settings
 from src.geo import census, h3_index, roads
-from src.scoring import score as scoring
 from src.ingest import watermark
+from src.scoring import score as scoring
 
-from . import lineage, vault, windows
+from . import lineage, vault
 from .engine import EligibilityEngine
 from .evaluate import evaluation_date, load_fixture, load_identities
 

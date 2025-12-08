@@ -12,7 +12,8 @@ Run:  python fixtures/generate_fixture.py > fixtures/synthetic_parties.csv
 The output is committed, so you do not need to run this. It is here so you can
 see there is no hidden magic in the fixture.
 """
-import csv, sys
+import csv
+import sys
 from datetime import date, timedelta
 
 TODAY = date(2026, 9, 1)          # frozen so the fixture is reproducible

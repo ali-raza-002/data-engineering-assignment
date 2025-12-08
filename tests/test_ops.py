@@ -8,11 +8,9 @@ from __future__ import annotations
 
 import duckdb
 import pytest
-import yaml
 
 from src.contracts import validate as C
 from src.ops import backfill, drift
-
 
 # --- contracts must be capable of failing -----------------------------------
 

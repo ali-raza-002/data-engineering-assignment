@@ -355,11 +355,11 @@ def main(argv: list[str] | None = None) -> int:
 
     r = run()
     print(f"\n  H3 r8 cells analysed        {r['cells']:>6,}  (>= {MIN_CRASHES_PER_CELL} crashes)")
-    print(f"\n  Getis-Ord Gi* hotspots")
+    print("\n  Getis-Ord Gi* hotspots")
     print(f"    raw counts   uncorrected {r['hot_raw_uncorrected']:>6,}  ->  FDR {r['hot_raw']:>4,}")
     print(f"    per road-km  uncorrected {r['hot_rate_uncorrected']:>6,}  ->  FDR {r['hot_rate']:>4,}")
     print(f"    cells hot under BOTH denominators  {r['agree']:>4,}")
-    print(f"\n  Moran's I")
+    print("\n  Moran's I")
     for label, mi in (("raw counts", r["moran_raw"]), ("per road-km", r["moran_rate"])):
         print(f"    {label:<12} I={mi['I']:+.4f}  z={mi['z_score']:+.2f}  p={mi['p_value']:.4f}")
     print(f"    LISA HH cells (per road-km, FDR)   {r['lisa_hh']:>4,}")

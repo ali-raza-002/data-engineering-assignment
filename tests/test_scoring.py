@@ -202,9 +202,9 @@ def test_backtest_reports_both_splits():
 def test_model_is_a_linear_model_not_a_blob():
     """Coefficients times standardised values ARE the named contributions. A
     boosted ensemble would score better and be the blob Part 4 rules out."""
-    from sklearn.linear_model import LogisticRegression
-
     import inspect
+
+    from sklearn.linear_model import LogisticRegression
     assert "LogisticRegression" in inspect.getsource(M._fit)
     assert hasattr(LogisticRegression, "coef_") or True
 

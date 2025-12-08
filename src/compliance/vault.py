@@ -93,8 +93,6 @@ def assert_no_direct_identifiers(payload: dict) -> None:
     Checked on every emitted record rather than trusted, because the failure
     mode is silent and the consequence is distributing PII.
     """
-    flat = repr(payload)
     for field in DIRECT_IDENTIFIERS:
         if field in payload:
             raise ValueError(f"direct identifier {field!r} present in emitted record")
-    return None

@@ -8,8 +8,6 @@ either half alone proves nothing.
 
 from __future__ import annotations
 
-import pytest
-
 MOCO_LAT = (38.9, 39.36)
 MOCO_LON = (-77.54, -76.87)
 
@@ -250,7 +248,7 @@ def _overlap_rate(con, source, jurisdiction, year_lo, year_hi):
     """Fatal crashes in a state source that also appear in FARS, matched on
     same-date plus a ~500 m coordinate window."""
     return con.execute(
-        f"""
+        """
         WITH s AS (
             SELECT crash_date, latitude, longitude FROM silver_crash
              WHERE source_system = ? AND severity_ordinal = 4 AND geo_quality = 'OK'
