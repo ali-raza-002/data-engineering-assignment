@@ -28,7 +28,7 @@ from pathlib import Path
 from src.config import CONFIG_DIR, REPO_ROOT, load_settings
 from src.ingest import watermark
 
-from . import lineage
+from . import lineage, windows
 from .engine import EligibilityEngine
 
 log = logging.getLogger("compliance.evaluate")
@@ -50,7 +50,7 @@ def _parse_row(row: dict) -> dict:
         # NPA only. The full number is a direct identifier and lives in the
         # vault; the calling-window fallback needs the area code and nothing
         # more, so carrying the rest through the analytic path would be gratuitous.
-        "phone_npa": row["phone_e164"][2:5] if row.get("phone_e164") else None,
+        "phone_npa": windows.npa_of(row.get("phone_e164")),
         "latitude": float(row["party_latitude"]),
         "longitude": float(row["party_longitude"]),
         "incident_date": as_date(row["incident_date"]),

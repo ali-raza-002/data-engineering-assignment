@@ -478,3 +478,14 @@ def test_every_new_code_carries_a_citation(engine):
     """A reason code without a legal basis is an opinion, not a control."""
     for code in (ReasonCode.INTERNAL_DNC, ReasonCode.ELIGIBLE_EBR):
         assert engine.citations_for([code])[0].strip()
+
+
+@pytest.mark.parametrize("raw", ["+13015550101", "13015550101", "3015550101", "(301) 555-0101"])
+def test_fixture_area_code_survives_any_us_number_format(raw):
+    """Slicing [2:5] assumed a '+1' prefix and read '15' out of a bare number."""
+    from src.compliance.evaluate import _parse_row
+
+    with open("fixtures/synthetic_parties.csv", newline="", encoding="utf-8") as fh:
+        row = next(csv.DictReader(fh))
+    row["phone_e164"] = raw
+    assert _parse_row(row)["phone_npa"] == "301"
