@@ -1,0 +1,35 @@
+# Direct dependencies. requirements.txt is the fully pinned set resolved from
+# this file; regenerate it with `pip install -r requirements.in && pip freeze`.
+
+# Storage and transform
+duckdb>=1.5,<2          # 2.0 is untested against the warehouse-scale SQL
+pandas>=3.1
+numpy>=2.5
+pyarrow>=26
+
+# Geospatial
+geopandas>=1.2
+shapely>=2.2
+h3>=4.5
+timezonefinder>=9.2
+libpysal>=4.15
+esda>=2.10
+
+# Modelling
+scikit-learn>=1.9
+scipy>=1.18
+
+# Ingestion, contracts, config
+requests>=2.34
+tenacity>=9.2
+jsonschema>=4.26
+PyYAML>=6.0
+python-dateutil>=2.9
+
+# Orchestration
+dagster>=1.13
+dagster-webserver>=1.13
+
+# Tests and lint
+pytest>=9.2
+ruff>=0.17
