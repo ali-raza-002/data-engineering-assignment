@@ -25,7 +25,8 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from datetime import time
+from datetime import datetime, time, timedelta
+from zoneinfo import ZoneInfo
 
 from src.geo.timezone import TimezoneResolver
 
@@ -61,6 +62,11 @@ class CallingWindow:
 
     def contains(self, local: time) -> bool:
         return self.earliest <= local <= self.latest
+
+    @property
+    def is_empty(self) -> bool:
+        """True when narrowing left no lawful hour in both candidate zones."""
+        return self.earliest >= self.latest
 
 
 def npa_of(phone_e164: str | None) -> str | None:
@@ -102,6 +108,40 @@ def window_for(rules: dict, jurisdiction: str | None) -> tuple[time, time, list[
     return earliest, latest, citations
 
 
+# Offsets are sampled in mid-winter and mid-summer because the two zones may
+# not observe DST together (America/Phoenix does not), so their difference can
+# change through the year. Narrowing by every observed difference is safe on
+# any calendar date.
+_OFFSET_SAMPLES = (datetime(2026, 1, 15, 12), datetime(2026, 7, 15, 12))
+
+
+def _offset_hours(zone_a: str, zone_b: str) -> set[float]:
+    """Hours to add to a wall-clock time in zone_a to get zone_b's."""
+    a, b = ZoneInfo(zone_a), ZoneInfo(zone_b)
+    return {
+        (b.utcoffset(moment) - a.utcoffset(moment)) / timedelta(hours=1)
+        for moment in _OFFSET_SAMPLES
+    }
+
+
+def _shift(t: time, hours: float) -> time:
+    shifted = datetime.combine(datetime.min.date(), t) + timedelta(hours=hours)
+    return shifted.time()
+
+
+def _intersect(earliest: time, latest: time, home: str, other: str) -> tuple[time, time]:
+    """Narrow [earliest, latest] in `home` local time so the call also lands
+    inside [earliest, latest] in `other`. A party who might be an hour ahead
+    loses an hour at the end; one who might be behind loses it at the start."""
+    narrowed_from, narrowed_to = earliest, latest
+    for delta in _offset_hours(home, other):
+        if delta > 0:
+            narrowed_to = min(narrowed_to, _shift(latest, -delta))
+        elif delta < 0:
+            narrowed_from = max(narrowed_from, _shift(earliest, -delta))
+    return narrowed_from, narrowed_to
+
+
 def resolve(
     rules: dict,
     *,
@@ -124,11 +164,9 @@ def resolve(
     disagreed = bool(address_zone and npa_zone and address_zone != npa_zone)
 
     if disagreed:
-        # Neither signal is authoritative, so narrow the window to the overlap
-        # of both zones' local hours rather than picking a winner. Expressed as
-        # a UTC-offset comparison via each zone's current offset would be
-        # fragile across DST, so the conservative move is to shorten the window
-        # by the offset difference on both ends.
+        # Neither signal is authoritative, so the window becomes the hours that
+        # are lawful in BOTH zones, expressed in the address zone's local time.
+        earliest, latest = _intersect(earliest, latest, address_zone, npa_zone)
         citations.append(
             "Number portability / VoIP: NPA-NXX is not reliable evidence of "
             "physical location, so the intersection of both candidate zones is used."

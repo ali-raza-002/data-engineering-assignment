@@ -317,6 +317,42 @@ def test_disagreement_between_sources_is_recorded(rules):
         rules, jurisdiction="TX", latitude=31.8479, longitude=-106.5348,  # Mountain
         npa="214", resolver=resolver)                     # Dallas NPA
     assert window.sources_disagreed
+    # Denver address, Central NPA: a 20:30 Denver call is 21:30 in Dallas.
+    assert (window.earliest, window.latest) == (time(8, 0), time(20, 0))
+
+
+def test_disagreement_toward_an_earlier_zone_trims_the_morning(rules):
+    """Eastern address, Central NPA: an 08:00 New York call is 07:00 in Dallas."""
+    resolver = TimezoneResolver()
+    zone, window = windows.resolve(
+        rules, jurisdiction="MD", latitude=39.084, longitude=-77.1528,
+        npa="214", resolver=resolver)
+    assert zone == "America/New_York"
+    assert (window.earliest, window.latest) == (time(9, 0), time(21, 0))
+
+
+def test_agreeing_sources_keep_the_full_window(rules):
+    resolver = TimezoneResolver()
+    _, window = windows.resolve(
+        rules, jurisdiction="MD", latitude=39.084, longitude=-77.1528,
+        npa="301", resolver=resolver)
+    assert not window.sources_disagreed
+    assert (window.earliest, window.latest) == (time(8, 0), time(21, 0))
+
+
+def test_narrowing_respects_zones_that_skip_dst():
+    """Phoenix sits with Denver in winter and with Los Angeles in summer, so
+    both differences must narrow the window."""
+    narrowed = windows._intersect(time(8, 0), time(21, 0), "America/Phoenix", "America/Denver")
+    assert narrowed == (time(8, 0), time(20, 0))
+
+
+def test_a_window_with_no_lawful_hour_blocks(engine, monkeypatch):
+    monkeypatch.setattr(windows, "_intersect", lambda *_: (time(12, 0), time(12, 0)))
+    record = _record(jurisdiction="TX", latitude=31.8479, longitude=-106.5348, phone_npa="214")
+    decision = engine.evaluate(record, today=TODAY)
+    assert decision.status == "INELIGIBLE"
+    assert ReasonCode.OUTSIDE_CALLING_WINDOW in decision.reason_codes
 
 
 def test_no_zone_means_no_window(rules):

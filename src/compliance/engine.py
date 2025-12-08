@@ -116,10 +116,14 @@ class EligibilityEngine:
             return GateVerdict("quality", False, [ReasonCode.TIMEZONE_UNRESOLVED],
                                "no zone from coordinates or NPA")
         codes = []
-        if window and window.sources_disagreed:
-            # Not blocking — the window was narrowed. Recorded so the narrowing
-            # is visible rather than silent.
+        if window.sources_disagreed:
+            # Not blocking on its own — the window was narrowed. Recorded so the
+            # narrowing is visible rather than silent.
             codes.append(ReasonCode.CALLING_WINDOW_SOURCES_DISAGREE)
+        if window.is_empty:
+            codes.append(ReasonCode.OUTSIDE_CALLING_WINDOW)
+            return GateVerdict("quality", False, codes,
+                               f"zone={zone}: no hour is lawful in both candidate zones")
         return GateVerdict("quality", True, codes, f"zone={zone} via {window.basis}")
 
     def _gate_source(self, record: dict) -> GateVerdict:
