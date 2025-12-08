@@ -87,7 +87,8 @@ def test_referential_expectation_points_the_right_way():
     assert sql.index("bronze_montgomery_drivers") < sql.index("EXCEPT")
 
 
-def test_live_contracts_pass(warehouse):
+def test_live_contracts_pass(bronze_drivers, silver_crash_fact):
+    warehouse, _ = silver_crash_fact
     violations = C.validate(warehouse)
     assert violations == [], "\n".join(str(v) for v in violations)
 
@@ -136,9 +137,10 @@ def test_value_drift_needs_a_baseline():
     con.close()
 
 
-def test_drift_fires_on_the_real_dictionary_change(warehouse):
+def test_drift_fires_on_the_real_dictionary_change(bronze_drivers):
     """The graded demonstration: Part 6 asks for the detector that would have
     caught the driver_substance_abuse change, shown firing on historical data."""
+    warehouse, _ = bronze_drivers
     findings = drift.value_drift(
         warehouse, "bronze_montgomery_drivers", "driver_substance_abuse")
     periods = {f.period for f in findings}
@@ -150,13 +152,14 @@ def test_drift_fires_on_the_real_dictionary_change(warehouse):
     )
 
 
-def test_the_cardinality_detector_misses_it(warehouse):
+def test_the_cardinality_detector_misses_it(bronze_drivers):
     """Kept so the comparison is testable rather than asserted.
 
     The distinct-value count holds at 9 straight through the transition, so a
     cardinality detector never fires on the change — while firing ~92 times
     elsewhere on routine churn. Blind where it matters, noisy where it does not.
     """
+    warehouse, _ = bronze_drivers
     findings = drift.cardinality_only(
         warehouse, "bronze_montgomery_drivers", "driver_substance_abuse")
     periods = {f.period for f in findings}
@@ -173,22 +176,24 @@ def test_schema_drift_would_not_have_caught_it(warehouse):
 
 # --- idempotent rebuild -----------------------------------------------------
 
-def test_fingerprint_is_order_independent_of_insertion(warehouse):
+def test_fingerprint_is_order_independent_of_insertion(silver_crash_fact):
     """Hashed with an explicit ORDER BY — an unordered aggregate is not
     reproducible, which is the Phase 3d lesson applied here."""
+    warehouse, _ = silver_crash_fact
     a = backfill.fingerprint(warehouse, "silver_crash")
     b = backfill.fingerprint(warehouse, "silver_crash")
     assert a == b and a.rows > 0
 
 
-def test_fingerprint_excludes_build_timestamps(warehouse):
+def test_fingerprint_excludes_build_timestamps():
     """built_at changes on every rebuild by construction. Including it would
     make the idempotency test permanently red."""
     import inspect
     assert "built_at" in inspect.getsource(backfill.fingerprint)
 
 
-def test_amended_window_covers_restated_reports(warehouse):
+def test_amended_window_covers_restated_reports(pipeline_runner):
+    _, warehouse = pipeline_runner
     start, end = backfill.amended_window(warehouse)
     assert start is not None and end < end.replace(year=end.year + 1)
     amended = warehouse.execute(
