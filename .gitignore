@@ -1,0 +1,52 @@
+# Local config — candidates copy settings.example.toml and add their own keys
+config/settings.toml
+.env
+*.key
+
+# Data — never commit source extracts or derived layers
+data/
+*.parquet
+*.pbf
+*.zip
+*.duckdb
+*.sqlite
+bronze/
+silver/
+gold/
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+
+
+# Environments and secrets
+project_venv/
+node_modules/
+.env.*
+!.env.example
+
+# Tool caches, coverage, logs, scratch
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage/
+*.log
+logs/
+tmp/
+build/
+dist/
+*.egg-info/
+
+# Workflow definitions are kept out of this repository
+.github/
