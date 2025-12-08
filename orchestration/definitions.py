@@ -32,6 +32,7 @@ Retry policy differs by layer, deliberately:
 # string and rejects it with a confusingly self-contradictory error.
 from dagster import (
     AssetExecutionContext,
+    AssetSelection,
     Backoff,
     DailyPartitionsDefinition,
     Definitions,
@@ -202,7 +203,7 @@ def drift_report(context: AssetExecutionContext) -> None:
     context.add_output_metadata({"alerts": len(findings)})
 
 
-daily_job = define_asset_job("daily_refresh", selection="*")
+daily_job = define_asset_job("daily_refresh", selection=AssetSelection.all())
 
 defs = Definitions(
     assets=[
