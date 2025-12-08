@@ -1,7 +1,7 @@
 # Copy to config/settings.toml and fill in. settings.toml is gitignored.
 
 [keys]
-census_api_key    = ""   # required — https://api.census.gov/data/key_signup.html
+census_api_key    = ""   # unused: ACS is deliberately not ingested (DECISIONS.md 3.1)
 socrata_app_token = ""   # optional — lifts anonymous throttling
 
 [run]
