@@ -117,7 +117,14 @@ def load(con: duckdb.DuckDBPyConnection, source: str = "MONTGOMERY_MD",
                  i, len(grid), row.cell_lat, row.cell_lon, f"{len(frame):,}")
         time.sleep(REQUEST_PAUSE_S)
 
-    observations = pd.concat([f for f in frames if not f.empty], ignore_index=True)
+    fetched = [f for f in frames if not f.empty]
+    if not fetched:
+        # Every cell fell inside the ERA5 lag, or the window held no crashes.
+        # Leave any existing weather_hourly in place rather than failing on an
+        # empty concat.
+        log.warning("no weather observations returned; weather_hourly unchanged")
+        return 0
+    observations = pd.concat(fetched, ignore_index=True)
     con.register("_weather_staging", observations)
     try:
         con.execute("""
@@ -184,7 +191,8 @@ def main(argv: list[str] | None = None) -> int:
     finally:
         con.close()
 
-    print(f"\n  crashes with weather  {matched:>9,} of {total:,}  ({matched/total:.1%})")
+    share = f"{matched / total:.1%}" if total else "n/a"
+    print(f"\n  crashes with weather  {matched:>9,} of {total:,}  ({share})")
     return 0
 
 

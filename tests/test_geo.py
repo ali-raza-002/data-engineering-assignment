@@ -258,3 +258,23 @@ def test_resolution_is_deterministic(resolver):
     args = (31.76, -106.49, datetime(2024, 3, 10, 2, 30))
     first = resolver.resolve(*args)
     assert all(resolver.resolve(*args) == first for _ in range(5))
+
+
+def test_weather_load_survives_cells_that_return_nothing(monkeypatch):
+    """Cells whose crashes all fall inside the ERA5 lag come back empty; that
+    must not crash the job on an empty concat."""
+    import duckdb
+    import pandas as pd
+
+    from src.geo import weather
+
+    con = duckdb.connect(":memory:")
+    con.execute("""
+        CREATE TABLE silver_crash AS SELECT
+            'MONTGOMERY_MD' AS source_system, 'OK' AS geo_quality,
+            39.08 AS latitude, -77.15 AS longitude, DATE '2026-11-01' AS crash_date
+    """)
+    monkeypatch.setattr(weather, "fetch_cell", lambda *a, **k: pd.DataFrame())
+    monkeypatch.setattr(weather, "REQUEST_PAUSE_S", 0)
+    assert weather.load(con) == 0
+    con.close()
