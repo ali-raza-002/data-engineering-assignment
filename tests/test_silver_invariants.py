@@ -299,3 +299,69 @@ def test_deduplication_is_required_before_any_union(silver_crash_fact):
     _, md = _overlap_rate(con, "MONTGOMERY_MD", "MD", "2019-01-01", "2024-12-31")
     _, tx = _overlap_rate(con, "TXDOT_CRIS", "TX", "2020-01-01", "2024-12-31")
     assert md + tx > 500, f"expected several hundred duplicate fatal crashes, found {md + tx}"
+
+
+# --- coordinate pairs -------------------------------------------------------
+
+
+def _minimal_bronze(con) -> None:
+    """Just enough bronze for build_crash: one TxDOT and two FARS rows that
+    exercise the coordinate edge cases; Montgomery tables are empty."""
+    meta = '"_source_record_id" VARCHAR, "_ingested_at" VARCHAR, "_content_hash" VARCHAR, "_run_id" VARCHAR'
+    con.execute(f"""
+        CREATE TABLE bronze_montgomery_incidents ({meta}, report_number VARCHAR,
+            crash_date_time VARCHAR, latitude VARCHAR, longitude VARCHAR,
+            acrs_report_type VARCHAR, collision_type VARCHAR, weather VARCHAR,
+            light VARCHAR, surface_condition VARCHAR);
+        CREATE TABLE bronze_montgomery_drivers ({meta}, report_number VARCHAR,
+            person_id VARCHAR, injury_severity VARCHAR);
+        CREATE TABLE bronze_montgomery_non_motorists ({meta}, report_number VARCHAR,
+            person_id VARCHAR, injury_severity VARCHAR);
+        CREATE TABLE bronze_txdot_cris_crash ({meta}, crash_id VARCHAR,
+            crash_date VARCHAR, crash_time VARCHAR, latitude VARCHAR, longitude VARCHAR,
+            rpt_latitude VARCHAR, rpt_longitude VARCHAR, crash_sev_id VARCHAR);
+        CREATE TABLE bronze_fars_accident ({meta}, STATE VARCHAR, YEAR VARCHAR,
+            MONTH VARCHAR, DAY VARCHAR, HOUR VARCHAR, MINUTE VARCHAR,
+            LATITUDE VARCHAR, LONGITUD VARCHAR);
+
+        INSERT INTO bronze_txdot_cris_crash VALUES
+            -- CRIS latitude only; the officer pair is complete
+            ('tx1', '2026-01-01', 'h1', 'r1', 'T1', '2024-05-01', '10:00:00',
+             '30.1', NULL, '31.5', '-97.5', '2'),
+            -- neither pair is complete
+            ('tx2', '2026-01-01', 'h2', 'r1', 'T2', '2024-05-01', '10:00:00',
+             '30.1', NULL, NULL, '-97.5', '2');
+        INSERT INTO bronze_fars_accident VALUES
+            ('f1', '2026-01-01', 'h3', 'r1', '48', '2024', '5', '1', '10', '0',
+             '30.2', NULL);
+    """)
+
+
+def test_txdot_coordinates_are_chosen_as_a_pair_not_per_axis():
+    import duckdb
+
+    from src.transform import silver
+
+    con = duckdb.connect(":memory:")
+    _minimal_bronze(con)
+    silver.build(con, only="crash")
+    rows = {r[0]: r[1:] for r in con.execute(
+        "SELECT source_record_id, latitude, longitude, geo_quality FROM silver_crash "
+        "WHERE source_system = 'TXDOT_CRIS'").fetchall()}
+    assert rows["tx1"] == (31.5, -97.5, "OK"), "mixed a CRIS latitude with an officer longitude"
+    assert rows["tx2"][2] == "MISSING"
+    con.close()
+
+
+def test_fars_point_missing_a_longitude_is_not_ok():
+    import duckdb
+
+    from src.transform import silver
+
+    con = duckdb.connect(":memory:")
+    _minimal_bronze(con)
+    silver.build(con, only="crash")
+    quality = con.execute(
+        "SELECT geo_quality FROM silver_crash WHERE source_system = 'NHTSA_FARS'").fetchone()[0]
+    assert quality == "MISSING"
+    con.close()

@@ -80,8 +80,8 @@ def register_udfs(con: duckdb.DuckDBPyConnection) -> None:
     for name, fn, args, ret in fns:
         try:
             con.remove_function(name)
-        except Exception:
-            pass
+        except duckdb.InvalidInputException:
+            pass  # not registered on this connection yet
         # 'special' because these legitimately map non-NULL input to NULL —
         # 'N/A' and 'UNKNOWN' are values that mean absent. Under DEFAULT,
         # DuckDB filters NULL input and forbids NULL output.
@@ -140,6 +140,10 @@ def build_crash(con: duckdb.DuckDBPyConnection) -> None:
     lon_lo, lon_hi = MOCO_LON
     lat_sent = ", ".join(str(v) for v in FARS_LAT_SENTINELS)
     lon_sent = ", ".join(str(v) for v in FARS_LON_SENTINELS)
+    txdot_cris_pair = ("TRY_CAST(t.latitude AS DOUBLE) IS NOT NULL "
+                       "AND TRY_CAST(t.longitude AS DOUBLE) IS NOT NULL")
+    txdot_rpt_pair = ("TRY_CAST(t.rpt_latitude AS DOUBLE) IS NOT NULL "
+                      "AND TRY_CAST(t.rpt_longitude AS DOUBLE) IS NOT NULL")
 
     con.execute(f"""
     CREATE OR REPLACE TABLE silver_crash AS
@@ -201,14 +205,15 @@ def build_crash(con: duckdb.DuckDBPyConnection) -> None:
             TRY_CAST(t.crash_date || ' ' || coalesce(t.crash_time, '00:00:00')
                      AS TIMESTAMP)               AS crash_timestamp,
             -- CRIS-derived pair first, officer-reported as fallback. The
-            -- fallback only rescues 203 of 1,562 nulls.
-            coalesce(TRY_CAST(t.latitude AS DOUBLE),
-                     TRY_CAST(t.rpt_latitude AS DOUBLE))  AS latitude,
-            coalesce(TRY_CAST(t.longitude AS DOUBLE),
-                     TRY_CAST(t.rpt_longitude AS DOUBLE)) AS longitude,
-            CASE WHEN coalesce(TRY_CAST(t.latitude AS DOUBLE),
-                               TRY_CAST(t.rpt_latitude AS DOUBLE)) IS NULL
-                 THEN 'MISSING' ELSE 'OK' END    AS geo_quality,
+            -- fallback only rescues 203 of 1,562 nulls. Chosen as a PAIR:
+            -- coalescing each axis separately can join a CRIS latitude to an
+            -- officer longitude, a point neither source reported.
+            CASE WHEN {txdot_cris_pair} THEN TRY_CAST(t.latitude AS DOUBLE)
+                 ELSE TRY_CAST(t.rpt_latitude AS DOUBLE) END   AS latitude,
+            CASE WHEN {txdot_cris_pair} THEN TRY_CAST(t.longitude AS DOUBLE)
+                 ELSE TRY_CAST(t.rpt_longitude AS DOUBLE) END  AS longitude,
+            CASE WHEN {txdot_cris_pair} OR ({txdot_rpt_pair})
+                 THEN 'OK' ELSE 'MISSING' END    AS geo_quality,
             sev_from_crash_sev_id(t.crash_sev_id) AS severity_ordinal,
             '{severity.BASIS_TXDOT_CODE}'        AS severity_basis,
             NULL                                 AS collision_type,
@@ -245,7 +250,8 @@ def build_crash(con: duckdb.DuckDBPyConnection) -> None:
             CASE
                 WHEN TRY_CAST(f.LATITUDE AS DOUBLE) IN ({lat_sent})
                   OR TRY_CAST(f.LONGITUD AS DOUBLE) IN ({lon_sent}) THEN 'SENTINEL'
-                WHEN TRY_CAST(f.LATITUDE AS DOUBLE) IS NULL THEN 'MISSING'
+                WHEN TRY_CAST(f.LATITUDE AS DOUBLE) IS NULL
+                  OR TRY_CAST(f.LONGITUD AS DOUBLE) IS NULL THEN 'MISSING'
                 ELSE 'OK'
             END                                  AS geo_quality,
             -- FARS is a fatality census: every row has FATALS >= 1.
