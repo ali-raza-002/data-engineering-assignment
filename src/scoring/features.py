@@ -17,6 +17,7 @@ that raises.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 import duckdb
@@ -59,16 +60,19 @@ FEATURES: tuple[Feature, ...] = (
     Feature("is_weekend", "silver_crash_geo", "local_dow", "dow in (6, 7)"),
     Feature("maxspeed_kph", "silver_crash_geo", "maxspeed", "parsed mph/kph, 0 when absent"),
     Feature("maxspeed_missing", "silver_crash_geo", "maxspeed",
-            "1 when untagged — 64% of accepted snaps; never imputed"),
+            "1 when untagged or unparseable — 64% of accepted snaps; never imputed"),
     Feature("road_is_major", "silver_crash_geo", "road_class",
             "highway in (motorway, trunk, primary)"),
     Feature("road_is_minor", "silver_crash_geo", "road_class",
-            "highway in (residential, service, living_street)"),
+            "highway in (residential, service, living_street, unclassified)"),
     Feature("snap_distance_m", "silver_crash_geo", "snap_distance_m", "metres, EPSG:26985"),
 )
 
 MAJOR_ROADS = {"motorway", "motorway_link", "trunk", "trunk_link", "primary", "primary_link"}
 MINOR_ROADS = {"residential", "service", "living_street", "unclassified"}
+
+
+_SPEED = re.compile(r"\d+(?:\.\d+)?")
 
 
 def parse_maxspeed(value: str | None) -> float:
@@ -77,16 +81,16 @@ def parse_maxspeed(value: str | None) -> float:
     a genuine zero from an absence. Never imputed from road class: sparsity is
     monotonic in road importance (trunk 14% null, service 99%), so imputing
     would invent the value exactly where it varies most."""
-    if not isinstance(value, str) or not value.strip():
+    if not isinstance(value, str):
         return 0.0
     text = value.strip().lower()
-    digits = "".join(c for c in text if c.isdigit() or c == ".")
-    if not digits:
+    # Multi-valued tags ('40 mph;30 mph', lanes or times of day) list several
+    # limits; the first is the general one. Joining every digit would read
+    # that as 4030.
+    match = _SPEED.search(text.split(";")[0])
+    if not match:
         return 0.0
-    try:
-        speed = float(digits)
-    except ValueError:
-        return 0.0
+    speed = float(match.group())
     return speed * 1.609 if "mph" in text else speed
 
 
@@ -116,7 +120,9 @@ def build(frame: pd.DataFrame) -> pd.DataFrame:
         "is_night": ((hour < 6) | (hour >= 21)).astype(float),
         "is_weekend": frame["local_dow"].isin([6, 7]).astype(float),
         "maxspeed_kph": speed,
-        "maxspeed_missing": frame["maxspeed"].isna().astype(float),
+        # Unparseable tags ('DE:urban', 'signals') carry no number either, so
+        # they count as missing rather than as a genuine 0 km/h.
+        "maxspeed_missing": (speed == 0.0).astype(float),
         "road_is_major": frame["road_class"].isin(MAJOR_ROADS).astype(float),
         "road_is_minor": frame["road_class"].isin(MINOR_ROADS).astype(float),
         "snap_distance_m": frame["snap_distance_m"].fillna(0.0),

@@ -77,6 +77,7 @@ def test_provenance_covers_the_built_matrix():
 
 @pytest.mark.parametrize("raw,expected", [
     ("35 mph", 56.315), ("50", 50.0), (None, 0.0), ("", 0.0), ("DE:urban", 0.0),
+    ("40 mph;30 mph", 64.36), ("50;30", 50.0), ("none", 0.0),
 ])
 def test_maxspeed_parsing(raw, expected):
     assert F.parse_maxspeed(raw) == pytest.approx(expected, abs=0.01)
@@ -93,6 +94,14 @@ def test_missing_maxspeed_is_flagged_not_imputed():
     matrix = F.build(frame)
     assert matrix["maxspeed_missing"].tolist() == [0.0, 1.0]
     assert matrix["maxspeed_kph"].iloc[1] == 0.0, "absent speed must not be filled"
+
+
+def test_unparseable_maxspeed_counts_as_missing():
+    frame = pd.DataFrame({
+        "local_hour": [13], "local_dow": [3], "maxspeed": ["DE:urban"],
+        "road_class": ["primary"], "snap_distance_m": [4.2],
+    })
+    assert F.build(frame)["maxspeed_missing"].tolist() == [1.0]
 
 
 # --- the score decomposes ---------------------------------------------------
